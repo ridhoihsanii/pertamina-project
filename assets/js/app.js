@@ -673,25 +673,64 @@
       return (matchNumber * 2) - (position === 'A' ? 1 : 0);
     },
 
+    // Get the divisi label for a participant, respecting the "custom" HC override (hcCustom).
+    getDivisiLabel: function (p) {
+      if (!p) return '';
+      var hc = String(p.hc || '').trim();
+      var custom = String(p.hcCustom || '').trim();
+      if (hc === 'custom' || custom) return custom || hc;
+      return hc;
+    },
+
     exportExcel: function () {
       if (typeof XLSX === 'undefined') {
         AnterajaUI.showToast('Library Excel tidak tersedia', 'danger');
         return;
       }
-      var size = parseInt(this.tournament && this.tournament.size, 10) || 32;
-      var participants = this.getParticipantsForTable();
       var self = this;
+      var size = parseInt(this.tournament && this.tournament.size, 10) || 32;
       var rows = [];
-      var i;
-      for (i = 1; i <= size; i += 1) {
-        var participant = participants[i - 1] || null;
-        rows.push({
-          'Nama': (participant && participant.name) || '',
-          'Divisi': (participant && participant.hc) || '',
-          'Bracket': self.slotToBracketLabel(i),
-          'Ukuran Tournament': size
-        });
+      var savedBracket = AnterajaStorage.loadBracket();
+      var round0 = savedBracket && savedBracket.bracket && savedBracket.bracket.size === size
+        && Array.isArray(savedBracket.bracket.rounds) ? savedBracket.bracket.rounds[0] : null;
+
+      function getNama(p) {
+        if (!p || !p.name || p.name === 'BYE') return '';
+        return p.name;
       }
+
+      if (round0 && round0.length) {
+        // Export exactly what is shown in the Tournament Bracket (Match #N, top = A, bottom = B).
+        round0.forEach(function (match, matchIdx) {
+          var matchNumber = matchIdx + 1;
+          rows.push({
+            'Nama': getNama(match.p1),
+            'Divisi': self.getDivisiLabel(match.p1),
+            'Bracket': matchNumber + 'A',
+            'Ukuran Tournament': size
+          });
+          rows.push({
+            'Nama': getNama(match.p2),
+            'Divisi': self.getDivisiLabel(match.p2),
+            'Bracket': matchNumber + 'B',
+            'Ukuran Tournament': size
+          });
+        });
+      } else {
+        // Fallback: no bracket generated yet, export using the List Peserta table order.
+        var participants = self.getParticipantsForTable();
+        var i;
+        for (i = 1; i <= size; i += 1) {
+          var participant = participants[i - 1] || null;
+          rows.push({
+            'Nama': (participant && participant.name) || '',
+            'Divisi': self.getDivisiLabel(participant),
+            'Bracket': self.slotToBracketLabel(i),
+            'Ukuran Tournament': size
+          });
+        }
+      }
+
       var wb = XLSX.utils.book_new();
       var ws = XLSX.utils.json_to_sheet(rows);
       XLSX.utils.book_append_sheet(wb, ws, 'Peserta');
