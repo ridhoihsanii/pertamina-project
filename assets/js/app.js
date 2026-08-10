@@ -515,7 +515,17 @@
 
       var importExcelInput = getElement('import-excel-input');
       if (importExcelInput) {
-        importExcelInput.addEventListener('change', function (e) { self.importExcel(e.target.files[0]); });
+        importExcelInput.addEventListener('change', function (e) {
+          self.importExcel(e.target.files[0]);
+          e.target.value = '';
+        });
+      }
+
+      var importExcelTriggerBtn = getElement('btn-import-excel-trigger');
+      if (importExcelTriggerBtn) {
+        importExcelTriggerBtn.addEventListener('click', function () {
+          if (importExcelInput) importExcelInput.click();
+        });
       }
 
       var exportJsonBtn = getElement('btn-export-json');
@@ -646,20 +656,40 @@
       reader.readAsText(file);
     },
 
+    // Slot (1-based) -> bracket label, e.g. slot 1 -> '1A', slot 2 -> '1B', slot 3 -> '2A', slot 4 -> '2B'
+    slotToBracketLabel: function (slot) {
+      var matchNumber = Math.ceil(slot / 2);
+      var position = (slot % 2 === 1) ? 'A' : 'B';
+      return matchNumber + position;
+    },
+
+    // Bracket label (e.g. '1A', '2B') -> slot (1-based). Returns null if invalid.
+    bracketLabelToSlot: function (label) {
+      var match = String(label == null ? '' : label).trim().toUpperCase().match(/^(\d+)\s*([AB])$/);
+      if (!match) return null;
+      var matchNumber = parseInt(match[1], 10);
+      var position = match[2];
+      if (!matchNumber || matchNumber < 1) return null;
+      return (matchNumber * 2) - (position === 'A' ? 1 : 0);
+    },
+
     exportExcel: function () {
-      var participants = AnterajaStorage.loadParticipants();
-      var rows = participants.map(function (p, i) {
-        return {
-          'No': i + 1,
-          'Nama': p.name || '',
-          'No. HP': p.phone || '',
-          'Divisi': p.hc || '',
-          'Status Bayar': p.status || ''
-        };
-      });
       if (typeof XLSX === 'undefined') {
         AnterajaUI.showToast('Library Excel tidak tersedia', 'danger');
         return;
+      }
+      var size = parseInt(this.tournament && this.tournament.size, 10) || 32;
+      var participants = this.getParticipantsForTable();
+      var self = this;
+      var rows = [];
+      var i;
+      for (i = 1; i <= size; i += 1) {
+        var participant = participants[i - 1] || null;
+        rows.push({
+          'Nama': (participant && participant.name) || '',
+          'Divisi': (participant && participant.hc) || '',
+          'Bracket': self.slotToBracketLabel(i)
+        });
       }
       var wb = XLSX.utils.book_new();
       var ws = XLSX.utils.json_to_sheet(rows);
@@ -673,24 +703,46 @@
         AnterajaUI.showToast('File atau library tidak tersedia', 'danger');
         return;
       }
+      var self = this;
       var reader = new FileReader();
       reader.onload = function (e) {
         try {
           var wb = XLSX.read(e.target.result, { type: 'array' });
           var ws = wb.Sheets[wb.SheetNames[0]];
           var rows = XLSX.utils.sheet_to_json(ws);
-          rows.forEach(function (row, i) {
+          var existingParticipants = AnterajaStorage.loadParticipants();
+          var skipped = 0;
+
+          rows.forEach(function (row) {
+            var bracketLabel = row['Bracket'] || row['bracket'] || row['No Bracket'] || row['Nomor Bracket'] || '';
+            var slot = self.bracketLabelToSlot(bracketLabel);
+            if (!slot) {
+              skipped += 1;
+              return;
+            }
+            var name = String(row['Nama'] || row['nama'] || '').trim();
+            var hc = String(row['Divisi'] || row['divisi'] || row['HC'] || '').trim();
+            if (!name && !hc) {
+              return;
+            }
+            var existing = existingParticipants.find(function (p) { return p && p.id === 'row-' + slot; });
             var p = {
-              id: 'row-' + (i + 1),
-              slot: i + 1,
-              phone: String(row['No. HP'] || ''),
-              name: String(row['Nama'] || ''),
-              hc: String(row['Divisi'] || row['HC'] || ''),
-              status: String(row['Status Bayar'] || '')
+              id: 'row-' + slot,
+              slot: slot,
+              phone: existing ? (existing.phone || '') : '',
+              name: name,
+              hc: hc,
+              hcCustom: '',
+              status: existing ? (existing.status || '') : ''
             };
             AnterajaStorage.saveParticipant(p);
           });
-          AnterajaUI.showToast('Excel berhasil diimpor!', 'success');
+
+          if (skipped > 0) {
+            AnterajaUI.showToast('Excel diimpor, ' + skipped + ' baris dilewati (kolom Bracket tidak valid)', 'success');
+          } else {
+            AnterajaUI.showToast('Excel berhasil diimpor!', 'success');
+          }
           setTimeout(function () { location.reload(); }, 1000);
         } catch (err) {
           AnterajaUI.showToast('Gagal membaca file Excel!', 'danger');
