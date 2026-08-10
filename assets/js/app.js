@@ -688,7 +688,8 @@
         rows.push({
           'Nama': (participant && participant.name) || '',
           'Divisi': (participant && participant.hc) || '',
-          'Bracket': self.slotToBracketLabel(i)
+          'Bracket': self.slotToBracketLabel(i),
+          'Ukuran Tournament': size
         });
       }
       var wb = XLSX.utils.book_new();
@@ -713,10 +714,29 @@
           var existingParticipants = AnterajaStorage.loadParticipants();
           var skipped = 0;
 
+          // Determine tournament size from the imported sheet (first valid value found).
+          var VALID_SIZES = [4, 8, 16, 32, 64, 128];
+          var importedSize = null;
+          rows.forEach(function (row) {
+            if (importedSize != null) return;
+            var raw = row['Ukuran Tournament'] || row['ukuran tournament'] || row['Ukuran'] || row['Size'] || '';
+            var parsed = parseInt(raw, 10);
+            if (parsed && VALID_SIZES.indexOf(parsed) !== -1) {
+              importedSize = parsed;
+            }
+          });
+
+          var size = importedSize || parseInt(self.tournament && self.tournament.size, 10) || 32;
+          if (importedSize && importedSize !== (self.tournament && self.tournament.size)) {
+            self.tournament = AnterajaStorage.saveTournament(Object.assign({}, self.tournament, { size: importedSize }));
+          }
+
+          var participantsForBracket = [];
+
           rows.forEach(function (row) {
             var bracketLabel = row['Bracket'] || row['bracket'] || row['No Bracket'] || row['Nomor Bracket'] || '';
             var slot = self.bracketLabelToSlot(bracketLabel);
-            if (!slot) {
+            if (!slot || slot > size) {
               skipped += 1;
               return;
             }
@@ -736,7 +756,16 @@
               status: existing ? (existing.status || '') : ''
             };
             AnterajaStorage.saveParticipant(p);
+            if (name) {
+              participantsForBracket.push({ id: p.id, name: p.name, hc: p.hc, drawingNumber: slot });
+            }
           });
+
+          // Regenerate the tournament bracket so round 1 reflects the imported bracket numbers.
+          if (typeof AnterajaTournament !== 'undefined') {
+            var newBracket = AnterajaTournament.generateBracket(size, participantsForBracket);
+            AnterajaStorage.saveBracket({ bracket: newBracket, liveMatchIds: [] });
+          }
 
           if (skipped > 0) {
             AnterajaUI.showToast('Excel diimpor, ' + skipped + ' baris dilewati (kolom Bracket tidak valid)', 'success');
