@@ -695,7 +695,7 @@
         && Array.isArray(savedBracket.bracket.rounds) ? savedBracket.bracket.rounds[0] : null;
 
       function getNama(p) {
-        if (!p || !p.name || p.name === 'BYE') return '';
+        if (!p || !p.name || p.name === 'BYE') return 'BYE';
         return p.name;
       }
 
@@ -723,13 +723,19 @@
         for (i = 1; i <= size; i += 1) {
           var participant = participants[i - 1] || null;
           rows.push({
-            'Nama': (participant && participant.name) || '',
+            'Nama': getNama(participant),
             'Divisi': self.getDivisiLabel(participant),
             'Bracket': self.slotToBracketLabel(i),
             'Ukuran Tournament': size
           });
         }
       }
+
+      // Sort the exported list alphabetically by name (BYE included), per user preference —
+      // the Bracket column keeps each participant's real bracket number regardless of row order.
+      rows.sort(function (a, b) {
+        return String(a['Nama'] || '').localeCompare(String(b['Nama'] || ''), 'id', { sensitivity: 'base' });
+      });
 
       var wb = XLSX.utils.book_new();
       var ws = XLSX.utils.json_to_sheet(rows);
@@ -796,9 +802,15 @@
             }
             var name = String(row['Nama'] || row['nama'] || '').trim();
             var hc = String(row['Divisi'] || row['divisi'] || row['HC'] || '').trim();
-            if (!name && !hc) {
+            var isBye = !name || name.toUpperCase() === 'BYE';
+
+            if (isBye) {
+              // Blank/BYE name: don't register a real participant, but mark this bracket
+              // slot as BYE so the Tournament Bracket shows "— BYE —" right after import.
+              participantsForBracket.push({ id: 'bye-' + slot, name: 'BYE', hc: '', drawingNumber: slot });
               return;
             }
+
             var existing = existingParticipants.find(function (p) { return p && p.id === 'row-' + slot; });
             var p = {
               id: 'row-' + slot,
@@ -810,9 +822,7 @@
               status: existing ? (existing.status || '') : ''
             };
             AnterajaStorage.saveParticipant(p);
-            if (name) {
-              participantsForBracket.push({ id: p.id, name: p.name, hc: p.hc, drawingNumber: slot });
-            }
+            participantsForBracket.push({ id: p.id, name: p.name, hc: p.hc, drawingNumber: slot });
           });
 
           // Regenerate the tournament bracket so round 1 reflects the imported bracket numbers.
