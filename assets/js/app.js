@@ -807,6 +807,8 @@
             if (isBye) {
               // Blank/BYE name: don't register a real participant, but mark this bracket
               // slot as BYE so the Tournament Bracket shows "— BYE —" right after import.
+              // Also clear any stale participant that previously occupied this slot.
+              AnterajaStorage.deleteParticipant('row-' + slot);
               participantsForBracket.push({ id: 'bye-' + slot, name: 'BYE', hc: '', drawingNumber: slot });
               return;
             }
@@ -825,9 +827,11 @@
             participantsForBracket.push({ id: p.id, name: p.name, hc: p.hc, drawingNumber: slot });
           });
 
-          // Regenerate the tournament bracket so round 1 reflects the imported bracket numbers.
+          // Regenerate the tournament bracket so round 1 reflects the imported bracket numbers,
+          // then auto-advance any real player who is matched against a BYE.
           if (typeof AnterajaTournament !== 'undefined') {
             var newBracket = AnterajaTournament.generateBracket(size, participantsForBracket);
+            AnterajaTournament.autoAdvanceByes(newBracket);
             AnterajaStorage.saveBracket({ bracket: newBracket, liveMatchIds: [] });
           }
 
