@@ -694,27 +694,31 @@
       var round0 = savedBracket && savedBracket.bracket && savedBracket.bracket.size === size
         && Array.isArray(savedBracket.bracket.rounds) ? savedBracket.bracket.rounds[0] : null;
 
-      function getNama(p) {
-        if (!p || !p.name || p.name === 'BYE') return 'BYE';
-        return p.name;
+      function isRealPlayer(p) {
+        return !!(p && p.name && p.name !== 'BYE');
       }
 
       if (round0 && round0.length) {
-        // Export exactly what is shown in the Tournament Bracket (Match #N, top = A, bottom = B).
+        // Export exactly what is shown in the Tournament Bracket (Match #N, top = A, bottom = B),
+        // skipping BYE/empty slots entirely so the sheet only lists valid participants.
         round0.forEach(function (match, matchIdx) {
           var matchNumber = matchIdx + 1;
-          rows.push({
-            'Nama': getNama(match.p1),
-            'Divisi': self.getDivisiLabel(match.p1),
-            'Bracket': matchNumber + 'A',
-            'Ukuran Tournament': size
-          });
-          rows.push({
-            'Nama': getNama(match.p2),
-            'Divisi': self.getDivisiLabel(match.p2),
-            'Bracket': matchNumber + 'B',
-            'Ukuran Tournament': size
-          });
+          if (isRealPlayer(match.p1)) {
+            rows.push({
+              'Nama': match.p1.name,
+              'Divisi': self.getDivisiLabel(match.p1),
+              'Bracket': matchNumber + 'A',
+              'Ukuran Tournament': size
+            });
+          }
+          if (isRealPlayer(match.p2)) {
+            rows.push({
+              'Nama': match.p2.name,
+              'Divisi': self.getDivisiLabel(match.p2),
+              'Bracket': matchNumber + 'B',
+              'Ukuran Tournament': size
+            });
+          }
         });
       } else {
         // Fallback: no bracket generated yet, export using the List Peserta table order.
@@ -722,8 +726,9 @@
         var i;
         for (i = 1; i <= size; i += 1) {
           var participant = participants[i - 1] || null;
+          if (!isRealPlayer(participant)) continue;
           rows.push({
-            'Nama': getNama(participant),
+            'Nama': participant.name,
             'Divisi': self.getDivisiLabel(participant),
             'Bracket': self.slotToBracketLabel(i),
             'Ukuran Tournament': size
@@ -731,7 +736,7 @@
         }
       }
 
-      // Sort the exported list alphabetically by name (BYE included), per user preference —
+      // Sort the exported list alphabetically by name, per user preference —
       // the Bracket column keeps each participant's real bracket number regardless of row order.
       rows.sort(function (a, b) {
         return String(a['Nama'] || '').localeCompare(String(b['Nama'] || ''), 'id', { sensitivity: 'base' });
@@ -791,8 +796,8 @@
 
           self.tournament = AnterajaStorage.saveTournament(Object.assign({}, self.tournament, { size: size }));
 
-          var participantsForBracket = [];
-
+          // First pass: read every row into { bracketSlot, name, hc, isBye } without touching storage yet.
+          var entries = [];
           rows.forEach(function (row) {
             var bracketLabel = row['Bracket'] || row['bracket'] || row['No Bracket'] || row['Nomor Bracket'] || '';
             var slot = self.bracketLabelToSlot(bracketLabel);
@@ -803,29 +808,53 @@
             var name = String(row['Nama'] || row['nama'] || '').trim();
             var hc = String(row['Divisi'] || row['divisi'] || row['HC'] || '').trim();
             var isBye = !name || name.toUpperCase() === 'BYE';
-
-            if (isBye) {
-              // Blank/BYE name: don't register a real participant, but mark this bracket
-              // slot as BYE so the Tournament Bracket shows "— BYE —" right after import.
-              // Also clear any stale participant that previously occupied this slot.
-              AnterajaStorage.deleteParticipant('row-' + slot);
-              participantsForBracket.push({ id: 'bye-' + slot, name: 'BYE', hc: '', drawingNumber: slot });
-              return;
-            }
-
-            var existing = existingParticipants.find(function (p) { return p && p.id === 'row-' + slot; });
-            var p = {
-              id: 'row-' + slot,
-              slot: slot,
-              phone: existing ? (existing.phone || '') : '',
-              name: name,
-              hc: hc,
-              hcCustom: '',
-              status: existing ? (existing.status || '') : ''
-            };
-            AnterajaStorage.saveParticipant(p);
-            participantsForBracket.push({ id: p.id, name: p.name, hc: p.hc, drawingNumber: slot });
+            entries.push({ bracketSlot: slot, name: isBye ? '' : name, hc: isBye ? '' : hc, isBye: isBye });
           });
+
+          // Any bracket slot not mentioned at all in the sheet (e.g. no row for "1B" because
+          // BYE rows are no longer exported) is implicitly a BYE — fill it in automatically.
+          var knownSlots = {};
+          entries.forEach(function (entry) { knownSlots[entry.bracketSlot] = true; });
+          for (var s = 1; s <= size; s += 1) {
+            if (!knownSlots[s]) {
+              entries.push({ bracketSlot: s, name: '', hc: '', isBye: true });
+            }
+          }
+
+          var participantsForBracket = [];
+
+          // BYE entries only ever exist inside the bracket, never in the List Peserta table.
+          entries.filter(function (entry) { return entry.isBye; }).forEach(function (entry) {
+            participantsForBracket.push({ id: 'bye-' + entry.bracketSlot, name: 'BYE', hc: '', drawingNumber: entry.bracketSlot });
+          });
+
+          // Real participants: rebuild the List Peserta table compacted from row 1 upward
+          // (ordered by their bracket position), so empty rows only appear at the bottom.
+          var realEntries = entries.filter(function (entry) { return !entry.isBye; })
+            .sort(function (a, b) { return a.bracketSlot - b.bracketSlot; });
+
+          var newParticipants = realEntries.map(function (entry, idx) {
+            var tableSlot = idx + 1;
+            var id = 'row-' + tableSlot;
+            var existing = existingParticipants.find(function (p) {
+              return p && p.name && String(p.name).trim().toLowerCase() === entry.name.toLowerCase();
+            });
+            var participant = {
+              id: id,
+              slot: tableSlot,
+              phone: existing ? (existing.phone || '') : '',
+              name: entry.name,
+              hc: entry.hc,
+              hcCustom: '',
+              status: existing ? (existing.status || '') : '',
+              createdAt: existing ? existing.createdAt : Date.now(),
+              updatedAt: Date.now()
+            };
+            participantsForBracket.push({ id: id, name: participant.name, hc: participant.hc, drawingNumber: entry.bracketSlot });
+            return participant;
+          });
+
+          AnterajaStorage.saveParticipants(newParticipants);
 
           // Regenerate the tournament bracket so round 1 reflects the imported bracket numbers,
           // then auto-advance any real player who is matched against a BYE.
