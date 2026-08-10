@@ -714,22 +714,37 @@
           var existingParticipants = AnterajaStorage.loadParticipants();
           var skipped = 0;
 
-          // Determine tournament size from the imported sheet (first valid value found).
           var VALID_SIZES = [4, 8, 16, 32, 64, 128];
-          var importedSize = null;
+          // Round up to the smallest supported tournament size that can fit `value` slots.
+          function normalizeSize(value) {
+            var n = parseInt(value, 10) || 0;
+            for (var i = 0; i < VALID_SIZES.length; i += 1) {
+              if (VALID_SIZES[i] >= n) return VALID_SIZES[i];
+            }
+            return VALID_SIZES[VALID_SIZES.length - 1];
+          }
+
+          // Determine tournament size from the "Ukuran Tournament" column (first valid value found)...
+          var sizeFromColumn = 0;
           rows.forEach(function (row) {
-            if (importedSize != null) return;
+            if (sizeFromColumn) return;
             var raw = row['Ukuran Tournament'] || row['ukuran tournament'] || row['Ukuran'] || row['Size'] || '';
             var parsed = parseInt(raw, 10);
-            if (parsed && VALID_SIZES.indexOf(parsed) !== -1) {
-              importedSize = parsed;
-            }
+            if (parsed > 0) sizeFromColumn = parsed;
           });
 
-          var size = importedSize || parseInt(self.tournament && self.tournament.size, 10) || 32;
-          if (importedSize && importedSize !== (self.tournament && self.tournament.size)) {
-            self.tournament = AnterajaStorage.saveTournament(Object.assign({}, self.tournament, { size: importedSize }));
-          }
+          // ...and cross-check against the highest bracket slot actually used in the sheet,
+          // so the tournament size always fits every imported bracket number (e.g. 17A/17B).
+          var maxSlotFromBracket = 0;
+          rows.forEach(function (row) {
+            var bracketLabel = row['Bracket'] || row['bracket'] || row['No Bracket'] || row['Nomor Bracket'] || '';
+            var slot = self.bracketLabelToSlot(bracketLabel);
+            if (slot && slot > maxSlotFromBracket) maxSlotFromBracket = slot;
+          });
+
+          var size = normalizeSize(Math.max(sizeFromColumn, maxSlotFromBracket) || (parseInt(self.tournament && self.tournament.size, 10) || 32));
+
+          self.tournament = AnterajaStorage.saveTournament(Object.assign({}, self.tournament, { size: size }));
 
           var participantsForBracket = [];
 
@@ -766,6 +781,14 @@
             var newBracket = AnterajaTournament.generateBracket(size, participantsForBracket);
             AnterajaStorage.saveBracket({ bracket: newBracket, liveMatchIds: [] });
           }
+
+          // Apply immediately so the UI reflects the new size/participants/bracket without waiting for reload.
+          self.participants = AnterajaStorage.loadParticipants();
+          self.renderTournamentSetup();
+          self.renderParticipantTable();
+          self.renderStats();
+          dispatchParticipantsUpdated();
+          dispatchBracketActivated();
 
           if (skipped > 0) {
             AnterajaUI.showToast('Excel diimpor, ' + skipped + ' baris dilewati (kolom Bracket tidak valid)', 'success');
