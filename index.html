@@ -1,16 +1,459 @@
 <!DOCTYPE html>
-<html lang="id" data-theme="dark">
+<html lang="id" data-theme="light">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="description" content="ANTERAJA - Professional Billiard Tournament Management System by Ihsan"/>
-  <meta name="theme-color" content="#0A0A0A"/>
-  <title>ANTERAJA CLUB — ANTERAJA CLUB TOURNAMENT SYSTEM</title>
+  <meta name="description" content="IT PERTAMINA CUP — Sistem Manajemen Turnamen Billiard"/>
+  <meta name="theme-color" content="#D71920"/>
+  <title>IT PERTAMINA CUP — SISTEM TURNAMEN BILLIARD</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="stylesheet" href="assets/js/bracket.bundle.css">
+  <style>
+    :root {
+      --anteraja-primary: #D71920;
+      --anteraja-primary-dark: #B5121B;
+      --anteraja-secondary: #F2B544;
+      --anteraja-blue: #0072BC;
+      --anteraja-charcoal: #1F2937;
+      --anteraja-black: #111827;
+      --anteraja-dark: #F1F5F9;
+      --anteraja-surface: #FFFFFF;
+      --anteraja-surface-2: #F8FAFC;
+      --anteraja-border: #E2E8F0;
+      --anteraja-border-active: rgba(215, 25, 32, 0.35);
+      --text-primary: #1F2937;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --bg: #F3F6FA;
+      --bg-alt: #EAF0F6;
+      --surface: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --text: #1F2937;
+      --accent: #D71920;
+      --shadow-brand: 0 8px 24px rgba(215, 25, 32, 0.12);
+      --header-height: 68px;
+    }
+
+    html { color-scheme: light; }
+
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --anteraja-dark: #111827;
+      --anteraja-surface: #1E293B;
+      --anteraja-surface-2: #263449;
+      --anteraja-border: #334155;
+      --anteraja-border-active: rgba(248, 113, 113, 0.45);
+      --text-primary: #F1F5F9;
+      --text-secondary: #CBD5E1;
+      --text-muted: #94A3B8;
+      --bg: #111827;
+      --bg-alt: #172235;
+      --surface: #1E293B;
+      --surface-2: #263449;
+      --text: #F1F5F9;
+      --shadow-brand: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    html[data-theme="light"] {
+      color-scheme: light;
+      --anteraja-dark: #F1F5F9;
+      --anteraja-surface: #FFFFFF;
+      --anteraja-surface-2: #F8FAFC;
+      --anteraja-border: #E2E8F0;
+      --text-primary: #1F2937;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --bg: #F3F6FA;
+      --bg-alt: #EAF0F6;
+      --surface: #FFFFFF;
+      --surface-2: #F8FAFC;
+      --text: #1F2937;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .anteraja-header {
+      height: var(--header-height);
+      padding: 0 28px;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--anteraja-border);
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .anteraja-header::after {
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #D71920 0 42%, #0072BC 42% 72%, #00A859 72% 100%);
+    }
+
+    .header-brand,
+    html[data-theme="light"] .header-brand {
+      gap: 12px;
+      color: #1F2937;
+      text-shadow: none;
+    }
+
+    .header-brand:hover {
+      color: var(--anteraja-primary-dark);
+      text-shadow: none;
+    }
+
+    .header-brand .brand-icon {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--anteraja-primary);
+      box-shadow: 0 5px 12px rgba(215, 25, 32, 0.2);
+      color: #FFFFFF;
+      font-size: 0.85rem;
+      font-weight: 800;
+      filter: none;
+    }
+
+    .header-brand > div > div {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .brand-sub,
+    html[data-theme="light"] .brand-sub {
+      color: #64748B !important;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+    }
+
+    .top-taskbar { gap: 6px; }
+
+    .top-taskbar .sidebar-nav-item {
+      padding: 9px 12px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: #64748B;
+      font-size: 0.82rem;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .top-taskbar .sidebar-nav-item:hover,
+    html[data-theme="light"] .top-taskbar .sidebar-nav-item:hover {
+      color: #1F2937;
+      background: #F1F5F9;
+    }
+
+    .top-taskbar .sidebar-nav-item.active,
+    html[data-theme="light"] .top-taskbar .sidebar-nav-item.active {
+      color: var(--anteraja-primary-dark);
+      background: rgba(215, 25, 32, 0.08);
+      border-color: rgba(215, 25, 32, 0.16);
+    }
+
+    .theme-toggle {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid var(--anteraja-border);
+      border-radius: 11px;
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--anteraja-primary);
+      color: var(--anteraja-primary);
+    }
+
+    .anteraja-main {
+      max-width: 1320px;
+      margin: calc(var(--header-height) + 18px) auto 32px;
+      padding: 28px;
+      background: transparent;
+    }
+
+    .section-header { margin-bottom: 22px; }
+
+    .section-title {
+      color: var(--text-primary);
+      font-size: 1.4rem;
+      font-weight: 750;
+      letter-spacing: -0.025em;
+    }
+
+    .section-title i { color: var(--anteraja-primary); }
+
+    .stat-card {
+      min-height: 110px;
+      gap: 15px;
+      padding: 20px;
+      overflow: hidden;
+      border: 1px solid var(--anteraja-border);
+      border-radius: 15px;
+      background: var(--surface);
+      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
+    }
+
+    .stat-card::before {
+      top: 14px;
+      right: auto;
+      bottom: 14px;
+      width: 3px;
+      border-radius: 3px;
+      background: var(--anteraja-primary);
+      opacity: 0.8;
+    }
+
+    .stat-card::after { display: none; }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--anteraja-border-active);
+      box-shadow: var(--shadow-brand);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-value {
+      color: var(--text-primary);
+      font-size: 1.55rem;
+      font-weight: 750;
+    }
+
+    .anteraja-card,
+    html[data-theme="light"] .anteraja-card {
+      border: 1px solid var(--anteraja-border);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.045);
+    }
+
+    .anteraja-card::before { display: none; }
+
+    .card-header-anteraja,
+    html[data-theme="light"] .card-header-anteraja {
+      border-bottom-color: var(--anteraja-border);
+    }
+
+    .card-header-anteraja h5,
+    html[data-theme="light"] .card-header-anteraja h5 {
+      color: var(--text-primary);
+      letter-spacing: 0.035em;
+    }
+
+    .card-icon {
+      border-radius: 10px;
+      background: rgba(215, 25, 32, 0.09);
+      color: var(--anteraja-primary);
+    }
+
+    .anteraja-label,
+    html[data-theme="light"] .anteraja-label {
+      color: var(--text-secondary);
+      font-size: 0.74rem;
+      letter-spacing: 0.035em;
+    }
+
+    .anteraja-input,
+    html[data-theme="light"] .anteraja-input,
+    .anteraja-select,
+    html[data-theme="light"] .anteraja-select {
+      border-color: var(--anteraja-border);
+      border-radius: 10px;
+      background: var(--surface-2);
+      color: var(--text-primary);
+    }
+
+    .anteraja-input:focus,
+    .anteraja-select:focus {
+      border-color: var(--anteraja-primary);
+      background: var(--surface);
+      box-shadow: 0 0 0 3px rgba(215, 25, 32, 0.12);
+    }
+
+    .anteraja-select option,
+    html[data-theme="light"] .anteraja-select option {
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+
+    .table-controls { gap: 10px; }
+
+    .search-input-wrapper,
+    .search-input {
+      border-color: var(--anteraja-border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+
+    .participant-scroll-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--anteraja-border);
+      border-radius: 15px;
+      background: var(--surface);
+    }
+
+    .participant-table { min-width: 620px; }
+
+    .participant-table thead tr {
+      background: var(--bg-alt);
+      border-bottom: 1px solid var(--anteraja-border);
+    }
+
+    .participant-table thead th {
+      padding: 14px;
+      color: var(--text-secondary);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+    }
+
+    .participant-table tbody tr,
+    html[data-theme="light"] .participant-table tbody tr {
+      border-bottom-color: var(--anteraja-border);
+    }
+
+    .participant-table tbody tr:hover,
+    html[data-theme="light"] .participant-table tbody tr:hover {
+      background: rgba(215, 25, 32, 0.035);
+    }
+
+    .participant-table tbody td,
+    html[data-theme="light"] .participant-table tbody td {
+      color: var(--text-primary);
+    }
+
+    .btn-export {
+      min-height: 40px;
+      padding: 9px 14px;
+      border: 1px solid var(--anteraja-border);
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      transition: var(--transition);
+    }
+
+    .btn-export-excel {
+      border-color: rgba(0, 168, 89, 0.2);
+      background: rgba(0, 168, 89, 0.08);
+      color: #008344;
+    }
+
+    .btn-export-pdf {
+      border-color: rgba(215, 25, 32, 0.18);
+      background: rgba(215, 25, 32, 0.07);
+      color: var(--anteraja-primary-dark);
+    }
+
+    .btn-export:hover { transform: translateY(-1px); }
+
+    .anteraja-footer,
+    html[data-theme="light"] .anteraja-footer {
+      border-top-color: var(--anteraja-border);
+      color: var(--text-muted);
+    }
+
+    .anteraja-footer span { color: var(--anteraja-primary); }
+    .anteraja-footer .heart {
+      color: var(--text-muted);
+      animation: none;
+    }
+
+    html[data-theme="dark"] .anteraja-header {
+      background: rgba(17, 24, 39, 0.96);
+      border-bottom-color: #334155;
+    }
+
+    html[data-theme="dark"] .header-brand { color: #F1F5F9; }
+
+    html[data-theme="dark"] .top-taskbar .sidebar-nav-item { color: #CBD5E1; }
+
+    html[data-theme="dark"] .top-taskbar .sidebar-nav-item:hover {
+      color: #F8FAFC;
+      background: #263449;
+    }
+
+    html[data-theme="dark"] .top-taskbar .sidebar-nav-item.active {
+      color: #FCA5A5;
+      background: rgba(215, 25, 32, 0.18);
+      border-color: rgba(248, 113, 113, 0.25);
+    }
+
+    html[data-theme="dark"] .anteraja-card { background: var(--surface); }
+
+    html[data-theme="dark"] .anteraja-input,
+    html[data-theme="dark"] .anteraja-select,
+    html[data-theme="dark"] .search-input-wrapper,
+    html[data-theme="dark"] .search-input {
+      background: var(--surface-2);
+      color: var(--text-primary);
+    }
+
+    html[data-theme="dark"] .participant-table thead tr { background: var(--bg-alt); }
+
+    html[data-theme="dark"] .participant-table tbody tr:hover {
+      background: rgba(248, 113, 113, 0.06);
+    }
+
+    @media (max-width: 768px) {
+      .anteraja-header {
+        height: auto;
+        min-height: var(--header-height);
+        flex-wrap: wrap;
+        row-gap: 4px;
+        padding: 8px 16px;
+      }
+
+      .header-center {
+        display: flex;
+        order: 3;
+        flex: 1 0 100%;
+        justify-content: flex-start;
+        overflow: hidden;
+        padding-top: 6px;
+      }
+
+      .top-taskbar {
+        width: 100%;
+        gap: 4px;
+        overflow-x: auto;
+        padding-bottom: 3px;
+      }
+
+      .top-taskbar .sidebar-nav-item {
+        padding: 8px 9px;
+        font-size: 0.75rem;
+      }
+
+      .anteraja-main { margin-top: 128px; padding: 20px; }
+    }
+
+    @media (max-width: 575.98px) {
+      .anteraja-main { margin-top: 128px; padding: 16px; }
+      .section-title { font-size: 1.2rem; }
+      .stat-card { min-height: 96px; padding: 14px; }
+      .stat-value { font-size: 1.3rem; }
+      .table-controls { align-items: stretch; }
+      .table-controls .search-input-wrapper { flex: 1 0 100%; }
+      .btn-export { flex: 1 1 auto; justify-content: center; }
+    }
+  </style>
 </head>
 <body>
   <div class="anteraja-app">
@@ -18,17 +461,17 @@
       <a class="header-brand" href="#">
         <span class="brand-icon">🏆</span>
         <div>
-          <div>ANTERAJA</div>
-          <span class="brand-sub">ANTERAJA CLUB TOURNAMENT</span>
+          <div>IT PERTAMINA CUP</div>
+          <span class="brand-sub">BILLIARD TOURNAMENT</span>
         </div>
       </a>
       <div class="header-center">
         <nav class="top-taskbar">
           <div class="sidebar-nav-item" data-section="dashboard">Dashboard</div>
-          <div class="sidebar-nav-item" data-section="setup">Tournament Setup</div>
-          <div class="sidebar-nav-item" data-section="participants">List Peserta Anteraja</div>
+          <div class="sidebar-nav-item" data-section="setup">Pengaturan Turnamen</div>
+          <div class="sidebar-nav-item" data-section="participants">Daftar Peserta IT Pertamina</div>
           <div class="sidebar-nav-item" data-section="bracket">
-            <i class="fas fa-sitemap"></i> Bracket
+            <i class="fas fa-sitemap"></i> Bagan Turnamen
           </div>
         </nav>
       </div>
@@ -94,7 +537,7 @@
         <div class="section-header">
           <div class="section-title">
             <i class="fas fa-cog"></i>
-            Tournament Setup
+            Pengaturan Turnamen
           </div>
         </div>
 
@@ -137,7 +580,7 @@
         <div class="section-header">
           <div class="section-title">
             <i class="fas fa-users"></i>
-            List Peserta Anteraja
+            Daftar Peserta IT Pertamina
           </div>
         </div>
 
@@ -183,9 +626,9 @@
         <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
           <div class="section-title">
             <i class="fas fa-sitemap"></i>
-            Tournament Bracket
+            Bagan Turnamen
           </div>
-          <button id="btn-preview-bracket" title="Buka preview fullscreen yang bisa dibagikan" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(237,6,119,0.4);background:rgba(237,6,119,0.07);color:#ED0677;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:background .15s,border-color .15s;">
+          <button id="btn-preview-bracket" title="Buka preview fullscreen yang bisa dibagikan" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1.5px solid rgba(215,25,32,0.35);background:rgba(215,25,32,0.07);color:#B5121B;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:background .15s,border-color .15s;">
             <i class="fas fa-eye"></i> PREVIEW
           </button>
         </div>
@@ -196,7 +639,7 @@
 
 
       <footer class="anteraja-footer mt-4">
-        Built with <span class="heart">❤️</span> by <span>Ihsan</span>
+        <span>IT CUP PERTAMINA</span> <span class="heart">❤️</span> Sistem Manajemen Turnamen Billiard By Ihsan
       </footer>
     </main>
   </div>
